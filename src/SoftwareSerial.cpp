@@ -523,6 +523,7 @@ void UARTBase::rxBits(const uint32_t isrTick) {
 
     // error introduced by edge value in LSB of isrTick is negligible
     uint32_t ticks = isrTick - m_isrLastTick;
+    m_isrLastTick = isrTick;
 
     uint32_t bits = ticks / m_bitTicks;
     if (ticks % m_bitTicks > (m_bitTicks >> 1)) ++bits;
@@ -531,10 +532,7 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         if (m_rxLastBit >= (m_pduBits - 1)) {
             // leading edge of start bit?
             if (level) break;
-            m_lastSeenStartBitTimeStamp=m_isrLastTick + bits * m_bitTicks;
-            if (m_startBitTimeStampBuffer) { 
-                m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStamp); 
-            }
+            m_lastSeenStartBitTimeStamp=ticksToMicros(isrTick - bits * m_bitTicks);
             m_rxLastBit = -1;
             --bits;
             continue;
@@ -560,6 +558,9 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         // if not high stop bit level, discard word
         if (bits >= static_cast<uint32_t>(m_pduBits - 1 - m_rxLastBit) && level) {
             m_rxCurByte >>= (sizeof(uint8_t) * 8 - m_dataBits);
+            if (m_startBitTimeStampBuffer) { 
+                m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStamp); 
+            }
             if (!m_buffer->push(m_rxCurByte)) {
                 m_overflow = true;
             }
@@ -587,7 +588,6 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         m_rxCurParity = false;
         break;
     }
-    m_isrLastTick = isrTick;
 }
 
 void IRAM_ATTR UARTBase::rxBitISR(UARTBase* self) {
