@@ -527,8 +527,9 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         if (m_rxLastBit >= (m_pduBits - 1)) {
             // leading edge of start bit?
             if (level) break;
+            m_lastSeenStartBitTimeStamp=m_isrLastTick + bits * m_bitTicks;
             if (m_startBitTimeStampBuffer) { 
-                m_startBitTimeStampBuffer->push(ticksToMicros(m_isrLastTick + bits * m_bitTicks)); 
+                m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStamp); 
             }
             m_rxLastBit = -1;
             --bits;
