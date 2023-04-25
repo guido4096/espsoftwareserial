@@ -217,11 +217,6 @@ public:
     {
         return m_lastReadStartBitTimeStamp;
     }
-    /// @returns The time stamp of the last seen start bit.
-    uint32_t lastSeenStartBitTimeStamp()
-    {
-        return m_lastSeenStartBitTimeStamp;
-    }
     /// @returns The calculated bit for even parity of the parameter byte
     static bool parityEven(uint8_t byte) {
         byte ^= byte >> 4;
