@@ -351,6 +351,7 @@ private:
     bool m_rxEnabled = false;
     bool m_txValid = false;
     bool m_txEnableValid = false;
+    bool m_enableStartBitTimeStamp = false;
     /// PDU bits include data, parity and stop bits; the start bit is not counted.
     uint8_t m_pduBits;
     bool m_intTxEnabled;

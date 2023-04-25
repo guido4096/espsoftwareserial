@@ -102,8 +102,11 @@ void UARTBase::beginRx(bool hasPullUp, int bufCapacity, int isrBufCapacity) {
         m_parityBuffer.reset(new circular_queue<uint8_t>((m_buffer->capacity() + 7) / 8));
         m_parityInPos = m_parityOutPos = 1;
     }
-    if (m_startBitTimeStampBuffer) { 
+    if (m_enableStartBitTimeStamp) { 
         m_startBitTimeStampBuffer.reset(new circular_queue<uint32_t>(m_buffer->capacity())); 
+    }
+    else {
+        m_startBitTimeStampBuffer.reset();
     }
     m_isrBuffer.reset(new circular_queue<uint32_t, UARTBase*>((isrBufCapacity > 0) ?
         isrBufCapacity : m_buffer->capacity() * (2 + m_dataBits + static_cast<bool>(m_parityMode))));
@@ -170,7 +173,8 @@ void UARTBase::enableTxGPIOOpenDrain(bool on) {
 }
 
 void UARTBase::enableStartBitTimeStampRecording(bool on) {
-    if (on) {
+    m_enableStartBitTimeStamp = on;
+    if (m_enableStartBitTimeStamp && m_buffer) {
         m_startBitTimeStampBuffer.reset(new circular_queue<uint32_t>(m_buffer->capacity()));
     }
     else {
