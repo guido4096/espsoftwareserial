@@ -191,6 +191,8 @@ public:
     void enableRxGPIOPullUp(bool on);
     /// Enable or disable (default) tx GPIO output mode.
     void enableTxGPIOOpenDrain(bool on);
+    /// Enable startbit timestamp recording
+    void enableStartBitTimeStampRecording(bool on);
 
     bool overflow();
 
@@ -209,6 +211,11 @@ public:
     bool readParity()
     {
         return m_lastReadParity;
+    }
+    /// @returns The time stamp of the start bit associated with the last successful read() or peek() call
+    uint32_t readStartBitTimeStamp()
+    {
+        return m_lastReadStartBitTimeStamp;
     }
     /// @returns The calculated bit for even parity of the parameter byte
     static bool parityEven(uint8_t byte) {
@@ -348,6 +355,7 @@ private:
     Parity m_parityMode;
     uint8_t m_stopBits;
     bool m_lastReadParity;
+    uint32_t m_lastReadStartBitTimeStamp;
     bool m_overflow = false;
     uint32_t m_bitTicks;
     uint8_t m_parityInPos;
@@ -356,6 +364,7 @@ private:
     uint8_t m_rxCurByte = 0;
     std::unique_ptr<circular_queue<uint8_t> > m_buffer;
     std::unique_ptr<circular_queue<uint8_t> > m_parityBuffer;
+    std::unique_ptr<circular_queue<uint32_t> > m_startBitTimeStampBuffer;
     uint32_t m_periodStart;
     uint32_t m_periodDuration;
 #ifndef ESP32

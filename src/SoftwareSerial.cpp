@@ -102,6 +102,9 @@ void UARTBase::beginRx(bool hasPullUp, int bufCapacity, int isrBufCapacity) {
         m_parityBuffer.reset(new circular_queue<uint8_t>((m_buffer->capacity() + 7) / 8));
         m_parityInPos = m_parityOutPos = 1;
     }
+    if (m_startBitTimeStampBuffer) { 
+        m_startBitTimeStampBuffer.reset(new circular_queue<uint32_t>(m_buffer->capacity())); 
+    }
     m_isrBuffer.reset(new circular_queue<uint32_t, UARTBase*>((isrBufCapacity > 0) ?
         isrBufCapacity : m_buffer->capacity() * (2 + m_dataBits + static_cast<bool>(m_parityMode))));
     if (m_buffer && (!m_parityMode || m_parityBuffer) && m_isrBuffer) {
@@ -133,6 +136,7 @@ void UARTBase::end()
     if (m_isrBuffer) {
         m_isrBuffer.reset();
     }
+    m_startBitTimeStampBuffer.reset();
 }
 
 uint32_t UARTBase::baudRate() {
@@ -163,6 +167,15 @@ void UARTBase::enableRxGPIOPullUp(bool on) {
 void UARTBase::enableTxGPIOOpenDrain(bool on) {
     m_txGPIOOpenDrain = on;
     setTxGPIOPinMode();
+}
+
+void UARTBase::enableStartBitTimeStampRecording(bool on) {
+    if (on) {
+        m_startBitTimeStampBuffer.reset(new circular_queue<uint32_t>(m_buffer->capacity()));
+    }
+    else {
+        m_startBitTimeStampBuffer.reset();
+    }
 }
 
 void UARTBase::enableTx(bool on) {
@@ -214,6 +227,9 @@ int UARTBase::read() {
             m_parityBuffer->pop();
         }
     }
+    if (m_startBitTimeStampBuffer) {
+        m_lastReadStartBitTimeStamp = m_startBitTimeStampBuffer->pop();
+    }
     return val;
 }
 
@@ -230,6 +246,9 @@ int UARTBase::read(uint8_t* buffer, size_t size) {
         while (m_parityOutPos >>= 1) ++parityBits;
         m_parityOutPos = (1 << (parityBits % 8));
         m_parityBuffer->pop_n(nullptr, parityBits / 8);
+    }
+    if (m_startBitTimeStampBuffer) {
+        m_startBitTimeStampBuffer->pop_n(nullptr, avail);
     }
     return avail;
 }
@@ -441,6 +460,9 @@ void UARTBase::flush() {
         m_parityInPos = m_parityOutPos = 1;
         m_parityBuffer->flush();
     }
+    if (m_startBitTimeStampBuffer) {
+        m_startBitTimeStampBuffer->flush();
+    }
 }
 
 bool UARTBase::overflow() {
@@ -457,6 +479,10 @@ int UARTBase::peek() {
     }
     auto val = m_buffer->peek();
     if (m_parityBuffer) m_lastReadParity = m_parityBuffer->peek() & m_parityOutPos;
+    if (m_startBitTimeStampBuffer) { 
+        m_lastReadStartBitTimeStamp = m_startBitTimeStampBuffer->peek(); 
+    }
+
     return val;
 }
 
@@ -493,7 +519,6 @@ void UARTBase::rxBits(const uint32_t isrTick) {
 
     // error introduced by edge value in LSB of isrTick is negligible
     uint32_t ticks = isrTick - m_isrLastTick;
-    m_isrLastTick = isrTick;
 
     uint32_t bits = ticks / m_bitTicks;
     if (ticks % m_bitTicks > (m_bitTicks >> 1)) ++bits;
@@ -502,6 +527,9 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         if (m_rxLastBit >= (m_pduBits - 1)) {
             // leading edge of start bit?
             if (level) break;
+            if (m_startBitTimeStampBuffer) { 
+                m_startBitTimeStampBuffer->push(ticksToMicros(m_isrLastTick + bits * m_bitTicks)); 
+            }
             m_rxLastBit = -1;
             --bits;
             continue;
@@ -554,6 +582,7 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         m_rxCurParity = false;
         break;
     }
+    m_isrLastTick = isrTick;
 }
 
 void IRAM_ATTR UARTBase::rxBitISR(UARTBase* self) {
