@@ -215,7 +215,7 @@ public:
     /// @returns The time stamp of the start bit associated with the last successful read() or peek() call
     uint32_t readStartBitTimeStamp()
     {
-        return m_lastReadStartBitTimeStamp;
+        return m_lastReadStartBitTimeStampMicros;
     }
     /// @returns The calculated bit for even parity of the parameter byte
     static bool parityEven(uint8_t byte) {
@@ -356,8 +356,8 @@ private:
     Parity m_parityMode;
     uint8_t m_stopBits;
     bool m_lastReadParity;
-    uint32_t m_lastReadStartBitTimeStamp;
-    uint32_t m_lastSeenStartBitTimeStamp;
+    uint32_t m_lastReadStartBitTimeStampMicros;
+    uint32_t m_lastSeenStartBitTimeStampTicks;
     bool m_overflow = false;
     uint32_t m_bitTicks;
     uint8_t m_parityInPos;

@@ -196,7 +196,9 @@ void UARTBase::enableRx(bool on) {
         if (on) {
             m_rxLastBit = m_pduBits - 1;
             // Init to stop bit level and current tick
-            m_isrLastTick = (microsToTicks(micros()) | 1) ^ m_invert;
+            m_lastReadStartBitTimeStampMicros = micros();
+            m_isrLastTick = (microsToTicks(m_lastReadStartBitTimeStampMicros) | 1) ^ m_invert;
+            m_lastSeenStartBitTimeStampTicks=microsToTicks(m_lastReadStartBitTimeStampMicros);
             if (m_bitTicks >= microsToTicks(1000000UL / 74880UL))
                 attachInterruptArg(digitalPinToInterrupt(m_rxPin), reinterpret_cast<void (*)(void*)>(rxBitISR), this, CHANGE);
             else
@@ -227,7 +229,10 @@ int UARTBase::read() {
         }
     }
     if (m_startBitTimeStampBuffer) {
-        m_lastReadStartBitTimeStamp = m_startBitTimeStampBuffer->pop();
+        unsigned long newTimeStampMicros = ticksToMicros(m_startBitTimeStampBuffer->pop());
+        // guess msb byt comparing to previous value, if difference too large, assume msb got lost
+        if (newTimeStampMicros - m_lastReadStartBitTimeStampMicros > (1 << 28) ) { newTimeStampMicros |= (1 << 31); }
+        m_lastReadStartBitTimeStampMicros = newTimeStampMicros;
     }
     return val;
 }
@@ -478,8 +483,11 @@ int UARTBase::peek() {
     }
     auto val = m_buffer->peek();
     if (m_parityBuffer) m_lastReadParity = m_parityBuffer->peek() & m_parityOutPos;
-    if (m_startBitTimeStampBuffer) { 
-        m_lastReadStartBitTimeStamp = m_startBitTimeStampBuffer->peek(); 
+    if (m_startBitTimeStampBuffer) {
+        unsigned long newTimeStampMicros = ticksToMicros(m_startBitTimeStampBuffer->peek());
+        // guess msb byt comparing to previous value, if difference too large, assume msb got lost
+        if (newTimeStampMicros - m_lastReadStartBitTimeStampMicros > (1 << 28) ) { newTimeStampMicros |= (1 << 31); }
+        m_lastReadStartBitTimeStampMicros = newTimeStampMicros;
     }
 
     return val;
@@ -527,7 +535,8 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         if (m_rxLastBit >= (m_pduBits - 1)) {
             // leading edge of start bit?
             if (level) break;
-            m_lastSeenStartBitTimeStamp=ticksToMicros(isrTick );
+            m_lastSeenStartBitTimeStampTicks=isrTick; 
+
             m_rxLastBit = -1;
             --bits;
             continue;
@@ -558,7 +567,7 @@ void UARTBase::rxBits(const uint32_t isrTick) {
             }
             else {
                 if (m_startBitTimeStampBuffer) { 
-                    m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStamp); 
+                    m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStampTicks); 
                 }
                 if (m_parityBuffer)
                 {
