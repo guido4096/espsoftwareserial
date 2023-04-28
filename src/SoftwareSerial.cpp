@@ -558,13 +558,13 @@ void UARTBase::rxBits(const uint32_t isrTick) {
         // if not high stop bit level, discard word
         if (bits >= static_cast<uint32_t>(m_pduBits - 1 - m_rxLastBit) && level) {
             m_rxCurByte >>= (sizeof(uint8_t) * 8 - m_dataBits);
-            if (m_startBitTimeStampBuffer) { 
-                m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStamp); 
-            }
             if (!m_buffer->push(m_rxCurByte)) {
                 m_overflow = true;
             }
             else {
+                if (m_startBitTimeStampBuffer) { 
+                    m_startBitTimeStampBuffer->push(m_lastSeenStartBitTimeStamp); 
+                }
                 if (m_parityBuffer)
                 {
                     if (m_rxCurParity) {
