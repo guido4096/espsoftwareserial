@@ -173,13 +173,8 @@ void UARTBase::enableTxGPIOOpenDrain(bool on) {
 }
 
 void UARTBase::enableStartBitTimeStampRecording(bool on) {
+    // do this before calling begin()
     m_enableStartBitTimeStamp = on;
-    if (m_enableStartBitTimeStamp && m_buffer) {
-        m_startBitTimeStampBuffer.reset(new circular_queue<uint32_t>(m_buffer->capacity()));
-    }
-    else {
-        m_startBitTimeStampBuffer.reset();
-    }
 }
 
 void UARTBase::enableTx(bool on) {

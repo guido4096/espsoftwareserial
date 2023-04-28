@@ -191,7 +191,7 @@ public:
     void enableRxGPIOPullUp(bool on);
     /// Enable or disable (default) tx GPIO output mode.
     void enableTxGPIOOpenDrain(bool on);
-    /// Enable startbit timestamp recording
+    /// Enable startbit timestamp recording. You need to call this before the begin() method
     void enableStartBitTimeStampRecording(bool on);
 
     bool overflow();
