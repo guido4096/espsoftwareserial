@@ -536,7 +536,6 @@ void UARTBase::rxBits(const uint32_t isrTick) {
             // leading edge of start bit?
             if (level) break;
             m_lastSeenStartBitTimeStampTicks=isrTick; 
-
             m_rxLastBit = -1;
             --bits;
             continue;
